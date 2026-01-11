@@ -1,5 +1,6 @@
-from typing import Callable, Optional, Any
+from datetime import datetime
 from functools import wraps
+from typing import Any, Callable, Optional
 
 
 def catch_exception(desc: str = "") -> Callable:
@@ -9,9 +10,13 @@ def catch_exception(desc: str = "") -> Callable:
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                print(f"Ошибка при вызове {desc}")
-                print(f"Функция - {func.__name__}")
+                with open("app.log", "a", encoding="utf-8") as file:
+                    file.write(
+                        f"[{datetime.now()}] Ошибка при вызове {desc} - Функция: {func.__name__} - Текст ошибки: {e}\n"
+                    )
                 print(e)
                 return None
+
         return wrapper
+
     return decorator

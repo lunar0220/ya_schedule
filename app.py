@@ -1,75 +1,129 @@
+from datetime import datetime
 from typing import Optional
+
+from utils import catch_exception
 from ya_schedule import YaSchedule
+
 
 class Application:
     def __init__(self, api_key: str, api_key_geo: str) -> None:
         self.schedule_api = YaSchedule(api_key=api_key, api_key_geo=api_key_geo)
-   
-   
+
     @staticmethod
-    def _show_menu(self) -> None:
-        print("1. Посмортреть расписание")
-        print("2. Выход")
+    def show_menu() -> None:
+        print("1. Посмотреть расписание")
+        print("3. Выход")
 
+    @catch_exception("Ввод информации о рейсах с пересадками")
+    def __input_transfers(self) -> Optional[str]:
+        transfers_input = input("Включать маршруты с пересадками? (д/н): ")
+        if transfers_input not in ("yes", "no", "y", "n", "д", "да", "н", "нет"):
+            raise ValueError("Нужно ввести один из вариантов (д/н)")
+        return transfers_input
 
-def __get_schedual(self, ) -> dict:
+    @catch_exception("Ввод инофрмации о городе")
+    def __input_city(self, city_type: str) -> Optional[str]:
+        city = input(f"Введите город {city_type}: ")
+        if not city:
+            raise ValueError(f"Необходимо ввести город {city_type}")
+        return city
 
-    city_from = input("Введите город отправления: ")
-    if not city_from:
-        print("Необходимо ввести город отправления")
-        return
-    
+    @catch_exception("Ввод информации о типе транспорта")
+    def __input_transport_type(self) -> Optional[tuple[str, bool]]:
+        transport_type = input("Введите тип транспорта: ")
+        if transport_type not in [
+            "plane",
+            "bus",
+            "train",
+            "suburban",
+            "water",
+            "helicopter",
+            "",
+            None,
+        ]:
+            raise ValueError(
+                "Тип траспорта может быть одним из этих - plane, bus, train, suburban, water, helicopter, либо пустая строка"
+            )
+        return transport_type, True
 
-    city_to = input("Введите город назначения: ")
-    if not city_to:
-        print("Необходимо ввести город следования")
-        return
+    @catch_exception("Ввод информации о дате")
+    def __input_date(self) -> Optional[tuple[str, bool]]:
+        date = input("Введите дату отправления (YYYY-MM-DD): ")
+        if date:
+            try:
+                datetime.strptime(date, "%Y-%M-%d")
+            except Exception:
+                raise ValueError("Введенная дата не соответствует формату (YYYY-MM-DD)")
+        return date, True
 
-    date = input("Введите дату отправления: (YYYY-MM-DD) ")
-    transport_type = input("Введите тип транспорта: ")
-    transfers_input = input("Включать маршруты с пересадкой? (д/н): ")
-    
-    transfers = False
-    if transfers_input not in ("yes", "no", "y", "n", "да", "нет", "д", "н"):
-        raise ValueError("Нужно ввести один из варинатов(д/н)")
+    def __get_schedule(self) -> Optional[dict]:
+        city_from = self.__input_city(city_type="отправления")
+        while not city_from:
+            city_from = self.__input_city("отправления")
 
-    if transfers_input == "д" or transfers_input == "да" or transfers_input == "y" or transfers_input == "yes":
-        transfers = True
+        city_to = self.__input_city(city_type="назначения")
+        while not city_to:
+            city_to = self.__input_city("назначения")
 
+        date = self.__input_date()
+        while not date:
+            date = self.__input_date()
 
-    return self.schedule_api.get_schedule(
-        city_from=city_from,
-        city_to=city_to,
-        date=date,
-        transport_types=transport_type,
-        transfers=transfers,
-    )
+        transport_type = self.__input_transport_type()
+        while not transport_type:
+            transport_type = self.__input_transport_type()
 
+        transfers_input = self.__input_transfers()
+        while not transfers_input:
+            transfers_input = self.__input_transfers()
 
-def __show_schedule(self, schedule_info: Optional[dict]) -> None:
-    if not schedule_info:
-        print("Не удалось получить расписание. Попробуйте снова.")
-        return
-    
+        transfers = False
+        if (
+            transfers_input == "д"
+            or transfers_input == "да"
+            or transfers_input == "y"
+            or transfers_input == "yes"
+        ):
+            transfers = True
 
-    counter = 1
-    for sch in schedule_info.get("segments", []):
-        print(f"{counter}. {sch.get("thread").get('title')} - {sch.get('thread').get('number')}")
-        print(f"\t{sch.get("thread").get("transport_type")} - {sch.get("thread").get("vehicle")}")
-        print(f"\t{sch.get("departure")} - {sch.get("arrival")}")
-        print()
-        counter += 1
+        return self.schedule_api.get_schedule(
+            city_from=city_from,
+            city_to=city_to,
+            date=date[0],
+            transport_types=transport_type[0],
+            transfers=transfers,
+        )
 
+    def __show_schedule(self, schedule_info: Optional[dict]) -> None:
+        if not schedule_info:
+            print("Не удалось получить расписание. Попробуйте снова.")
+            return
 
-    def run(self):
+        counter = 1
+        for sch in schedule_info.get("segments", []):
+            print(
+                f"{counter}. {sch.get('thread').get('title')} - {sch.get('thread').get('number')}"
+            )
+            print(
+                f"\t{sch.get('thread').get('transport_type')} - {sch.get('thread').get('vehicle')}"
+            )
+            print(f"\t{sch.get('departure')} - {sch.get('arrival')}")
+            print()
+            counter += 1
+
+    def run(self) -> None:
         while True:
             Application.show_menu()
 
-            user_input = int(input())
+            try:
+                user_input = int(input())
+                if user_input not in [1, 3]:
+                    raise ValueError("Такого пункта в меню нет!")
+            except Exception:
+                print("Необходимо выбрать существующий пункт меню!")
+                continue
 
             if user_input == 1:
                 self.__show_schedule(self.__get_schedule())
-
-
             elif user_input == 3:
-                break
+                return
