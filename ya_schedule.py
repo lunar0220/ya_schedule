@@ -20,10 +20,10 @@ class YaSchedule:
         method_params = params.copy()
         method_params["apikey"] = self.api_key
 
-        return requests.get(
-            url=request_url,
-            params=method_params,
-        ).json()
+        response = requests.get(url=request_url, params=method_params)
+        response.raise_for_status()
+        return response.json()
+
 
     def __get_city_coordinates(self, city_name: str) -> tuple[str, str]:
         request_url = "http://api.openweathermap.org/geo/1.0/direct"
@@ -33,10 +33,9 @@ class YaSchedule:
             "appid": self.api_key_geo,
         }
 
-        res = requests.get(
-            url=request_url,
-            params=params,
-        ).json()
+        res = requests.get(url=request_url, params=params)
+        res.raise_for_status()
+        res = res.json()
 
         if len(res) == 0:
             raise ValueError("Введен не корректный город!")
@@ -86,3 +85,22 @@ class YaSchedule:
             method="search",
             params=params,
         )
+    
+
+    @catch_exception("Получение станций города")
+    def get_city_stations(self, city_name: str) -> Optional[list[dict]]:
+        lat, lng = self.__get_city_coordinates(city_name)
+
+        params = {
+            "lat": lat,
+            "lng": lng,
+            "distance": 15,
+            "lang": "ru_RU",
+        }
+
+        response = self._make_api_request(
+            method="nearest_stations",
+            params=params,
+        )
+
+        return response.get("stations", [])

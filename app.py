@@ -12,6 +12,7 @@ class Application:
     @staticmethod
     def show_menu() -> None:
         print("1. Посмотреть расписание")
+        print("2. Посмотреть станции города")
         print("3. Выход")
 
     @catch_exception("Ввод информации о рейсах с пересадками")
@@ -51,7 +52,7 @@ class Application:
         date = input("Введите дату отправления (YYYY-MM-DD): ")
         if date:
             try:
-                datetime.strptime(date, "%Y-%M-%d")
+                datetime.strptime(date, "%Y-%m-%d")
             except Exception:
                 raise ValueError("Введенная дата не соответствует формату (YYYY-MM-DD)")
         return date, True
@@ -111,19 +112,47 @@ class Application:
             print()
             counter += 1
 
+    def show_city_stations(self) -> None:
+        city = self.__input_city(city_type="для просмотра станций")
+        while not city:
+            city = self.__input_city("для просмотра станций")
+
+        stations = self.schedule_api.get_city_stations(city_name=city)
+        if not stations:
+            print("Не удалось получить список станций. Попробуйте снова.")
+            return
+
+        print(f"\nСтанции города {city}:")
+        print("-" * 50)
+
+
+        for i, station in enumerate(stations, start=1):
+            title = station.get("title", "Неизвестно")
+            station_type = station.get("station_type", "—")
+            transport = station.get("transport_type", "—")
+
+            print(f"{i}. {title}")
+            print(f"   Тип станции: {station_type}")
+            print(f"   Вид транспорта: {transport}")
+            print()
+
+
+
     def run(self) -> None:
-        while True:
-            Application.show_menu()
+            while True:
+                self.show_menu()
+                try:
+                    choice = int(input())
+                except ValueError:
+                    print("Введите номер пункта меню")
+                    continue
 
-            try:
-                user_input = int(input())
-                if user_input not in [1, 3]:
-                    raise ValueError("Такого пункта в меню нет!")
-            except Exception:
-                print("Необходимо выбрать существующий пункт меню!")
-                continue
-
-            if user_input == 1:
-                self.__show_schedule(self.__get_schedule())
-            elif user_input == 3:
-                return
+                if choice == 1:
+                    print("Просмотр расписания (реализовано ранее)")
+                elif choice == 2:
+                    self.show_city_stations()
+                elif choice == 3:
+                    print("Выход")
+                    return
+                else:
+                    print("Такого пункта меню нет")
